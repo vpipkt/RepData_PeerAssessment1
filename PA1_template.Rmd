@@ -71,6 +71,12 @@ interval.steps <- tapply(activity$steps, activity$interval, mean, na.rm=T)
 
 plot(interval.steps,x=names(interval.steps), type="l",xlab="Time", ylab="Average daily steps",main="Daily Activity Pattern", lwd=2, col="blue")
 
+#attempt a nice looking GGPLOT2 option with transparency to show variation
+#and somehow add the plot of averages later in.
+activity$easy.date <- paste(activity$posix$month + 1, activity$posix$mday, sep="-")
+ggplot(activity, aes(x=interval, y=steps, group=easy.date, color=posix))+
+                                           geom_line(alpha=0.1)
+
 ```
 
 From the plot, it appears the interval with the maximum average number of steps is in the morning. 
