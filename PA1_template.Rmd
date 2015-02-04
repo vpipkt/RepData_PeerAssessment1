@@ -5,21 +5,87 @@ output:
     keep_md: true
 ---
 
+This is a literate statistical programming document describing an exploratory analysis of a personal activity monitoring dataset. The data are from a pedometer. The work is submitted as a programming assignment for the Coursera class Reproducible Research.
+
+```{r prereqs, echo=FALSE, results="hide"}
+library(ggplot2)
+```
+
 
 ## Loading and preprocessing the data
 
+The data are present in the [forked repository][1] in a zip archive. Before proceeding, check the working directory is a good location: `r getwd()`. Then unpack the archive.
 
+```{r unzip}
+unzip("activity.zip")
+```
+
+This produces a single file called `activity.csv`. Read this into a data frame called activity. 
+
+```{r read}
+activity <- read.csv("activity.csv")
+```
+
+Next I explore the general state of the data, to see what cleaning may need to be done.
+
+```{r explore }
+head(activity,10)
+summary(activity)
+nrow(activity)
+```
+
+The steps variable has `r 100 * sum(is.na(activity$steps)/nrow(activity)) ` percent missing values. This will be explored more later.
+
+The interval is a numeric type, but it represents time in 24-hour format. If the number is padded with zeros, it will be easy to convert to a time format.  This can be combined with the character representations of the dates in a single POSIXlt field. We will retain the original `interval` as it will  
+
+
+```{r time-clean}
+activity$timeChar <- sprintf("%04d", activity$interval)
+activity$posix <- strptime(paste(activity$date, activity$timeChar), 
+                                 format="%Y-%m-%d %H%M")
+summary(activity$posix)
+activity$timeChar <- NULL
+activity$date <- NULL
+```
 
 ## What is mean total number of steps taken per day?
 
+To compute the daily number of steps, I first total each day's count of steps. Then I take the mean and median of each daily observation.  First, let us observe the histogram of the daily steps taken. 
 
+```{r mean-daily-steps}
+daily.steps<- tapply(activity$steps, cut.POSIXt(activity$posix,"day"), sum, na.rm=T)
+
+hist(daily.steps, col="red",breaks=12)
+
+mean(daily.steps)
+
+median(tapply(activity$steps, cut.POSIXt(activity$posix,"day"), sum, na.rm=T))
+```
 
 ## What is the average daily activity pattern?
 
+To understand the average daily activity pattern, I produce a time series plot of and the average number of steps taken against the 5-minute interval.  For this the original `interval` value is used.
 
+```{r daily-activity-chart}
+interval.steps <- tapply(activity$steps, activity$interval, mean, na.rm=T)
+
+plot(interval.steps,x=names(interval.steps), type="l",xlab="Time", ylab="Average daily steps",main="Daily Activity Pattern", lwd=2, col="blue")
+
+```
+
+From the plot, it appears the interval with the maximum average number of steps is in the morning. 
+
+```{r max-interval}
+names(which.max(interval.steps))
+```
+
+This is interpreted as the 8:35 AM interval. It has `r max(interval.steps)` on average each day in a five-minute period. 
 
 ## Imputing missing values
 
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+
+[1]:https://github.com/rdpeng/RepData_PeerAssessment1
