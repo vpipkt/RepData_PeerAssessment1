@@ -1,14 +1,16 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
+title: 'Reproducible Research: Peer Assessment 1'
+output:
   html_document:
-    keep_md: true
+    keep_md: yes
 ---
 
 This is a literate statistical programming document describing an exploratory analysis of a personal activity monitoring dataset. The data are from a pedometer. The work is submitted as a programming assignment for the Coursera class Reproducible Research.
 
 ```{r prereqs, echo=FALSE, results="hide"}
 library(ggplot2)
+library(xtable)
+library(reshape2)
 ```
 
 
@@ -20,7 +22,7 @@ The data are present in the [forked repository][1] in a zip archive. Before proc
 unzip("activity.zip")
 ```
 
-This produces a single file called `activity.csv`. Read this into a data frame called activity. 
+This produces a single file called `activity.csv`. Read this into a data frame called `activity`. 
 
 ```{r read}
 activity <- read.csv("activity.csv")
@@ -28,15 +30,15 @@ activity <- read.csv("activity.csv")
 
 Next I explore the general state of the data, to see what cleaning may need to be done.
 
-```{r explore }
-head(activity,10)
-summary(activity)
+```{r explore, results='asis'}
+print(xtable(head(activity,10)),type="html")
+print(xtable(summary(activity)), type="html")
 nrow(activity)
 ```
 
-The steps variable has `r 100 * sum(is.na(activity$steps)/nrow(activity)) ` percent missing values. This will be explored more later.
+The `steps` variable has `r 100 * sum(is.na(activity$steps)/nrow(activity)) ` percent missing values. This will be explored more later.
 
-The interval is a numeric type, but it represents time in 24-hour format. If the number is padded with zeros, it will be easy to convert to a time format.  This can be combined with the character representations of the dates in a single POSIXlt field. We will retain the original `interval` as it will  
+The `interval` is a numeric type, but it represents time in 24-hour format. If the number is padded with zeros, it will be easy to convert to a time format.  This can be combined with the character representations of the dates in a single POSIXlt field. We will retain the original `interval` as it will be useful later.
 
 
 ```{r time-clean}
@@ -54,12 +56,9 @@ To compute the daily number of steps, I first total each day's count of steps. T
 
 ```{r mean-daily-steps}
 daily.steps<- tapply(activity$steps, cut.POSIXt(activity$posix,"day"), sum, na.rm=T)
-
 hist(daily.steps, col="red",breaks=12)
-
 mean(daily.steps)
-
-median(tapply(activity$steps, cut.POSIXt(activity$posix,"day"), sum, na.rm=T))
+median(daily.steps)
 ```
 
 ## What is the average daily activity pattern?
@@ -71,27 +70,70 @@ interval.steps <- tapply(activity$steps, activity$interval, mean, na.rm=T)
 
 plot(interval.steps,x=names(interval.steps), type="l",xlab="Time", ylab="Average daily steps",main="Daily Activity Pattern", lwd=2, col="blue")
 
-#attempt a nice looking GGPLOT2 option with transparency to show variation
-#and somehow add the plot of averages later in.
-activity$easy.date <- paste(activity$posix$month + 1, activity$posix$mday, sep="-")
-ggplot(activity, aes(x=interval, y=steps, group=easy.date, color=posix))+
-                                           geom_line(alpha=0.1)
-
 ```
 
-From the plot, it appears the interval with the maximum average number of steps is in the morning. 
+The plot shows a diurnal pattern: much more activity during the day. The steps begin early in the morning, peak in mid morning, and have a few local surges through the afternoon and evening. The average drops off in the late evening. The interval with the maximum number of steps can be found. 
 
 ```{r max-interval}
 names(which.max(interval.steps))
 ```
 
-This is interpreted as the 8:35 AM interval. It has `r max(interval.steps)` on average each day in a five-minute period. 
+This is interpreted as the 8:35 AM to 8:39:59 AM interval. It has `r max(interval.steps)` on average each day in a five-minute period. 
 
 ## Imputing missing values
 
+As mentioned above, there are days and intervals with missing values.  The number of missing values is: 
+
+The number of rows containing NAs is:
+```{r NA-count}
+sum(is.na(activity$steps))
+sum(is.na(activity$posix))
+sum(is.na(activity$interval))
+```
+Observe only `steps` contains missing values. The device has produced a record for each time stamp. 
+
+
+In order to fill in the missing values, I impute the missing value as the mean of interval. First, a data frame is constructed containing the intervals and their means across observed days. Second this is merged with the `activity` data frame to make imputed values available. Finally the missing values are filled in.
+
+```{r impute-missing}
+interval.steps.df <- data.frame(interval=as.numeric(names(interval.steps)),
+                                mean.steps = interval.steps)
+impute <- merge(activity, interval.steps.df, by="interval")
+impute[is.na(impute$steps),"steps"] <-impute[is.na(impute$steps), "mean.steps"] 
+```
+
+For comparison to the original data, the histogram, mean and median of total daily steps are repeated on the data set with imputed steps.
+
+```{r imputed-summary}
+daily.steps.imp <- tapply(impute$steps, cut.POSIXt(impute$posix,"day"), sum)
+hist(daily.steps.imp, col="red",breaks=12)
+mean(daily.steps.imp)
+median(daily.steps.imp)
+mean.diff <- mean(daily.steps.imp) - mean(daily.steps) 
+med.diff <- median(daily.steps.imp) - median(daily.steps)
+```
+
+The mean increased by `r mean.diff` and the median increased by `r med.diff`.  It makes sense these measures of central tendency increase because steps are now assumed to happen where none were recorded originally.  
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+I explore this question using the dataset with imputed step count values. The POSIX date data provides easy access to the day of the week. Sunday is coded as zero and Saturday is 6.
+
+```{r weekend}
+impute$weekend <- as.factor(impute$posix$wday %in% c(0,6))
+levels(impute$weekend) <- c("weekday","weekend")
+```
+
+
+I compare the weekday and weekend time series of daily average steps for weekday and weekend to address the question.  First, 
+
+```{r panel-plot-weekend}
+weekend.int<- dcast(melt(impute,measure.vars="steps"),interval+weekend~variable,mean)
+p <- ggplot(weekend.int,aes(x=interval,y=steps, group=weekend))
+p + geom_line() + facet_grid(weekend ~ .) + xlab("Time interval") + ylab("Average number of steps")
+```
+
+On the weekends, activity begins later, more slowly and does not peak as high. It is also more irregular and carries on later than in the weekdays.
 
 
 [1]:https://github.com/rdpeng/RepData_PeerAssessment1
