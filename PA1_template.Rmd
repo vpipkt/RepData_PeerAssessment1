@@ -31,14 +31,14 @@ activity <- read.csv("activity.csv")
 Next I explore the general state of the data, to see what cleaning may need to be done.
 
 ```{r explore, results='asis'}
-print(xtable(head(activity,10)),type="html")
+print(xtable(tail(activity,10)),type="html")
 print(xtable(summary(activity)), type="html")
 nrow(activity)
 ```
 
 The `steps` variable has `r 100 * sum(is.na(activity$steps)/nrow(activity)) ` percent missing values. This will be explored more later.
 
-The `interval` is a numeric type, but it represents time in 24-hour format. If the number is padded with zeros, it will be easy to convert to a time format.  This can be combined with the character representations of the dates in a single POSIXlt field. We will retain the original `interval` as it will be useful later.
+The `interval` is a numeric type, but it represents time in 24-hour format. If the number is padded with zeros, it will be easy to convert to a time format.  This can be combined with the character representations of the dates in a single POSIXlt field. I will retain the original `interval` as it will be useful later.
 
 
 ```{r time-clean}
@@ -52,7 +52,7 @@ activity$date <- NULL
 
 ## What is mean total number of steps taken per day?
 
-To compute the daily number of steps, I first total each day's count of steps. Then I take the mean and median of each daily observation.  First, let us observe the histogram of the daily steps taken. 
+To compute the daily number of steps, I first total each day's count of steps. Then I take the mean and median of each daily observation.  First, we observe the histogram of the daily steps taken. 
 
 ```{r mean-daily-steps}
 daily.steps<- tapply(activity$steps, cut.POSIXt(activity$posix,"day"), sum, na.rm=T)
@@ -90,10 +90,10 @@ sum(is.na(activity$steps))
 sum(is.na(activity$posix))
 sum(is.na(activity$interval))
 ```
-Observe only `steps` contains missing values. The device has produced a record for each time stamp. 
+Observe only `steps` contains missing values. The pedometer device has produced a record for each time stamp. 
 
 
-In order to fill in the missing values, I impute the missing value as the mean of interval. First, a data frame is constructed containing the intervals and their means across observed days. Second this is merged with the `activity` data frame to make imputed values available. Finally the missing values are filled in.
+In order to fill in the missing values, I impute the missing value as the mean of its five-minute interval. First, I construct a data frame containing the intervals and their means across observed days. Second this is merged with the `activity` data frame to make imputed values available. Finally I fill in the missing values with the interval mean.
 
 ```{r impute-missing}
 interval.steps.df <- data.frame(interval=as.numeric(names(interval.steps)),
@@ -102,7 +102,7 @@ impute <- merge(activity, interval.steps.df, by="interval")
 impute[is.na(impute$steps),"steps"] <-impute[is.na(impute$steps), "mean.steps"] 
 ```
 
-For comparison to the original data, the histogram, mean and median of total daily steps are repeated on the data set with imputed steps.
+For comparison to the original data, I repeat here the histogram, mean and median of total daily steps, this time with imputed steps.
 
 ```{r imputed-summary}
 daily.steps.imp <- tapply(impute$steps, cut.POSIXt(impute$posix,"day"), sum)
@@ -113,19 +113,19 @@ mean.diff <- mean(daily.steps.imp) - mean(daily.steps)
 med.diff <- median(daily.steps.imp) - median(daily.steps)
 ```
 
-The mean increased by `r mean.diff` and the median increased by `r med.diff`.  It makes sense these measures of central tendency increase because steps are now assumed to happen where none were recorded originally.  
+The mean increased by `r mean.diff` steps and the median increased by `r med.diff` steps.  It makes sense these measures of central tendency increase because steps are now assumed to happen where none were recorded originally.  
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
-I explore this question using the dataset with imputed step count values. The POSIX date data provides easy access to the day of the week. Sunday is coded as zero and Saturday is 6.
+I explore this question using the dataset with imputed step count values. The POSIX date data provides easy access to the day of the week. Sunday is coded as zero and Saturday is 6.  I create the new factor using the `wday` member of the POSIXlt date.
 
-```{r weekend}
+```{r weeknd}
 impute$weekend <- as.factor(impute$posix$wday %in% c(0,6))
 levels(impute$weekend) <- c("weekday","weekend")
 ```
 
 
-I compare the weekday and weekend time series of daily average steps for weekday and weekend to address the question.  First, 
+I compare the weekday and weekend time series of daily average steps for weekday and weekend to address the question.  First, I summarize the data using the `reshape2` package. The panel plot is displayed below.
 
 ```{r panel-plot-weekend}
 weekend.int<- dcast(melt(impute,measure.vars="steps"),interval+weekend~variable,mean)
@@ -134,6 +134,7 @@ p + geom_line() + facet_grid(weekend ~ .) + xlab("Time interval") + ylab("Averag
 ```
 
 On the weekends, activity begins later, more slowly and does not peak as high. It is also more irregular and carries on later than in the weekdays.
+
 
 
 [1]:https://github.com/rdpeng/RepData_PeerAssessment1
