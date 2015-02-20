@@ -29,7 +29,7 @@ print(xtable(tail(activity,10)),type="html")
 ```
 
 <!-- html table generated in R 3.1.2 by xtable 1.7-4 package -->
-<!-- Mon Feb 09 20:32:13 2015 -->
+<!-- Fri Feb 20 09:49:11 2015 -->
 <table border=1>
 <tr> <th>  </th> <th> steps </th> <th> date </th> <th> interval </th>  </tr>
   <tr> <td align="right"> 17559 </td> <td align="right">  </td> <td> 2012-11-30 </td> <td align="right"> 2310 </td> </tr>
@@ -49,7 +49,7 @@ print(xtable(summary(activity)), type="html")
 ```
 
 <!-- html table generated in R 3.1.2 by xtable 1.7-4 package -->
-<!-- Mon Feb 09 20:32:13 2015 -->
+<!-- Fri Feb 20 09:49:11 2015 -->
 <table border=1>
 <tr> <th>  </th> <th>     steps </th> <th>         date </th> <th>    interval </th>  </tr>
   <tr> <td align="right"> 1 </td> <td> Min.   :  0.0   </td> <td> 2012-10-01:  288   </td> <td> Min.   :   0   </td> </tr>
