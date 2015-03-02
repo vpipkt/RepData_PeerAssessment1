@@ -76,6 +76,7 @@ The plot shows a diurnal pattern: much more activity during the day. The steps b
 
 ```{r max-interval}
 names(which.max(interval.steps))
+max(interval.steps)
 ```
 
 This is interpreted as the 8:35 AM to 8:39:59 AM interval. It has `r max(interval.steps)` on average each day in a five-minute period. 
@@ -128,7 +129,9 @@ levels(impute$weekend) <- c("weekday","weekend")
 I compare the weekday and weekend time series of daily average steps for weekday and weekend to address the question.  First, I summarize the data using the `reshape2` package. The panel plot is displayed below.
 
 ```{r panel-plot-weekend}
+impute$posix <- as.POSIXct(impute$posix)
 weekend.int<- dcast(melt(impute,measure.vars="steps"),interval+weekend~variable,mean)
+                    
 p <- ggplot(weekend.int,aes(x=interval,y=steps, group=weekend))
 p + geom_line() + facet_grid(weekend ~ .) + xlab("Time interval") + ylab("Average number of steps")
 ```
